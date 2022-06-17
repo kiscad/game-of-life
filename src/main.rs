@@ -1,4 +1,5 @@
-use std::io::{stdout, Write};
+use std::fs::File;
+use std::io::{stdout, BufRead, BufReader, Read, Write};
 use std::thread::sleep;
 use std::time::{Duration, Instant};
 
@@ -117,6 +118,35 @@ impl Grid {
         buffer.flush()?;
         Ok(())
     }
+
+    fn new_by_loading_map_file(filename: &str) -> std::io::Result<Self> {
+        let file = File::open(filename)?;
+        let mut text = String::new();
+        BufReader::new(file).read_to_string(&mut text);
+        let lines: Vec<_> = text.split('\n').map(|s| s.trim()).collect();
+        let grid: Vec<_> = lines
+            .iter()
+            .map(|line| line.split(',').collect::<Vec<_>>())
+            .collect();
+        let (dimy, dimx) = (grid.len(), grid[0].len());
+        let mut cells = vec![];
+        for line in grid {
+            cells.extend(line.iter().map(|&c| match c {
+                "0" => State::Dead,
+                "1" => State::Live,
+                _ => panic!("Invalid character in file content!"),
+            }))
+        }
+        // println!("{}, {}", dimx, dimy);
+        assert!(cells.len() == dimx * dimy);
+        Ok(Self {
+            dim: GridPos {
+                x: dimx as u16,
+                y: dimy as u16,
+            },
+            cells,
+        })
+    }
 }
 
 #[test]
@@ -132,11 +162,14 @@ fn main() -> Result<()> {
     terminal::enable_raw_mode()?;
 
     let mut buffer = stdout();
-    let mut game = Grid::new(32, 32);
-    game.render(&mut buffer)?;
-    sleep(Duration::from_millis(1000));
-    game.update_grid();
-    game.render(&mut buffer);
+    queue!(buffer, cursor::Hide)?;
+    let mut game = Grid::new_by_loading_map_file("./glider_gun.txt")?;
+
+    for _ in 0..100 {
+        game.render(&mut buffer)?;
+        sleep(Duration::from_millis(300));
+        game.update_grid();
+    }
 
     terminal::disable_raw_mode()?;
     Ok(())
