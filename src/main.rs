@@ -1,5 +1,6 @@
+use std::fmt::Display;
 use std::fs::File;
-use std::io::{stdout, BufRead, BufReader, Read, Write};
+use std::io::{stdout, BufReader, Read, Write};
 use std::thread::sleep;
 use std::time::{Duration, Instant};
 
@@ -10,6 +11,7 @@ use crossterm::{
 };
 
 const CELL_SIZE: (u16, u16) = (2, 1);
+const BOERDER: u16 = 2;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum State {
@@ -23,12 +25,6 @@ struct GridPos {
     y: u16,
 }
 
-impl GridPos {
-    pub fn to_tuple(&self) -> (u16, u16) {
-        (self.x, self.y)
-    }
-}
-
 #[derive(Debug)]
 struct Grid {
     dim: GridPos, // field dimension: (#cells along x-dir, #cells along y-dir)
@@ -36,6 +32,7 @@ struct Grid {
 }
 
 impl Grid {
+    #[allow(dead_code)]
     pub fn new(sizex: u16, sizey: u16) -> Self {
         Grid {
             dim: GridPos { x: sizex, y: sizey },
@@ -46,7 +43,7 @@ impl Grid {
     fn idx2pos(&self, idx: usize) -> GridPos {
         GridPos {
             x: idx as u16 % self.dim.x,
-            y: idx as u16 / self.dim.y,
+            y: idx as u16 / self.dim.x,
         }
     }
 
@@ -89,19 +86,52 @@ impl Grid {
         }
     }
 
+    #[allow(dead_code)]
+    fn print_neibos_of_live_cells(&self, neibos: &[usize]) {
+        for chunk in neibos
+            .iter()
+            .zip(&self.cells)
+            .collect::<Vec<_>>()
+            .chunks(self.dim.x as usize)
+        {
+            for (nb, st) in chunk {
+                print!(
+                    "{} ",
+                    *nb * match *st {
+                        State::Live => 1,
+                        _ => 0,
+                    }
+                );
+            }
+            println!();
+        }
+        println!();
+    }
+
     fn update_grid(&mut self) {
         let neibos: Vec<_> = (0..self.cells.len())
             .map(|i| self.count_live_neibos(i))
             .collect();
+
+        // self.print_neibos_of_live_cells(&neibos);
+
         for (s, nb) in self.cells.iter_mut().zip(neibos) {
             *s = Grid::game_rules(s, nb);
         }
     }
 
     fn render<T: Write>(&self, buffer: &mut T) -> Result<()> {
+        assert!(self.cells.len() as u16 == self.dim.x * self.dim.y);
         queue!(buffer, terminal::Clear(terminal::ClearType::All))?;
         for (i, s) in self.cells.iter().enumerate() {
-            let (x, y) = (i as u16 % self.dim.x, i as u16 / self.dim.y);
+            let (x, y) = (i as u16 % self.dim.x, i as u16 / self.dim.x);
+            // Skip border region
+            if x < BOERDER || y < BOERDER || x >= self.dim.x - BOERDER || y >= self.dim.y - BOERDER
+            {
+                continue;
+            }
+            let (x, y) = (x - BOERDER, y - BOERDER);
+            // draw grids inside of border
             for iy in 0..CELL_SIZE.1 {
                 for ix in 0..CELL_SIZE.0 {
                     queue!(
@@ -120,9 +150,9 @@ impl Grid {
     }
 
     fn new_by_loading_map_file(filename: &str) -> std::io::Result<Self> {
-        let file = File::open(filename)?;
+        let mut reader = BufReader::new(File::open(filename)?);
         let mut text = String::new();
-        BufReader::new(file).read_to_string(&mut text);
+        reader.read_to_string(&mut text)?;
         let lines: Vec<_> = text.split('\n').map(|s| s.trim()).collect();
         let grid: Vec<_> = lines
             .iter()
@@ -149,6 +179,25 @@ impl Grid {
     }
 }
 
+impl Display for Grid {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for states in self.cells.chunks(self.dim.x as usize) {
+            for s in states {
+                write!(
+                    f,
+                    "{} ",
+                    match *s {
+                        State::Live => "1",
+                        State::Dead => "0",
+                    }
+                )?;
+            }
+            writeln!(f)?;
+        }
+        Ok(())
+    }
+}
+
 #[test]
 fn test_count_live_neibos() {
     let f = Grid::new(3, 3);
@@ -163,12 +212,18 @@ fn main() -> Result<()> {
 
     let mut buffer = stdout();
     queue!(buffer, cursor::Hide)?;
-    let mut game = Grid::new_by_loading_map_file("./glider_gun.txt")?;
+    let mut game = Grid::new_by_loading_map_file("./patterns/penta.txt")?;
 
-    for _ in 0..100 {
+    let mut timer = Instant::now();
+    for _ in 0..30 {
         game.render(&mut buffer)?;
-        sleep(Duration::from_millis(300));
         game.update_grid();
+
+        // sleep(Duration::from_millis(30));
+        while timer.elapsed() < Duration::from_millis(1000) {
+            sleep(Duration::from_millis(1));
+        }
+        timer = Instant::now();
     }
 
     terminal::disable_raw_mode()?;
