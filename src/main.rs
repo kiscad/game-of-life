@@ -79,8 +79,7 @@ impl Grid {
 
     fn game_rules(state: &State, live_neibos: usize) -> State {
         match (state, live_neibos) {
-            (State::Live, nb) if nb < 2 => State::Dead,
-            (State::Live, nb) if nb > 3 => State::Dead,
+            (State::Live, nb) if !(2..=3).contains(&nb) => State::Dead,
             (State::Dead, nb) if nb == 3 => State::Live,
             _ => *state,
         }
@@ -167,7 +166,7 @@ impl Grid {
                 _ => panic!("Invalid character in file content!"),
             }))
         }
-        // println!("{}, {}", dimx, dimy);
+
         assert!(cells.len() == dimx * dimy);
         Ok(Self {
             dim: GridPos {
@@ -212,15 +211,14 @@ fn main() -> Result<()> {
 
     let mut buffer = stdout();
     queue!(buffer, cursor::Hide)?;
-    let mut game = Grid::new_by_loading_map_file("./patterns/penta.txt")?;
+    let mut game = Grid::new_by_loading_map_file("./patterns/simkin_glider_gun.txt")?;
 
     let mut timer = Instant::now();
-    for _ in 0..30 {
+    for _ in 0..1000 {
         game.render(&mut buffer)?;
         game.update_grid();
 
-        // sleep(Duration::from_millis(30));
-        while timer.elapsed() < Duration::from_millis(1000) {
+        while timer.elapsed() < Duration::from_millis(250) {
             sleep(Duration::from_millis(1));
         }
         timer = Instant::now();
