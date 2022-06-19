@@ -7,7 +7,7 @@ Game of Life (GoL, 生命游戏) 是英国数学家 John Horton Conway 在上个
 ## 1. 生命游戏
 ### 1.1 生命游戏的原理
 
-一个 GoL 是无穷扩展的二维矩形网格，每个网格表示一个 cell，cell 有两种可能的状态 Live 和 Dead。每个 cell 由 8 个邻居 cell，位于该 cell为中心的九宫格在。游戏演进过程中，每个 cell 的下一个状态由自己的当前状态以及周围邻居的状态决定，即 GoL 的最核心的 rules。Game rules 具体为如下三条：
+一个 GoL 是无穷扩展的二维矩形网格，每个网格表示一个 cell，cell 有两种可能的状态 Live 和 Dead。每个 cell 有 8 个邻居 cell，位于以该 cell 为中心的九宫格在。游戏演进过程中，每个 cell 的下一个状态由自己的当前状态以及周围邻居的当前状态决定，即 GoL 的最核心的 rules。Game rules 具体为如下三条：
 
 1. 一个 `live` cell，当其邻居中`live` cells 的数量 <2 或 >3 时，它在下一回合会变成 `dead` cell。
 2. 一个 `dead` cell，当其邻居中有 3 个 `live` cells 时，它在下一回合会变成 `live` cell。
@@ -21,7 +21,7 @@ Game of Life (GoL, 生命游戏) 是英国数学家 John Horton Conway 在上个
 - **Oscillator**: live cells 在几种 patterns 间循环，整体位置不变
 - **spaceship**: live cells 在几种 patterns 间循环，同时整体位置沿着特定方向平移
 
-上面三种运动模式的典型例子可以看一些[维基百科](https://en.wikipedia.org/wiki/Conway%27s_Game_of_Life)。
+上面三种运动模式的典型例子可以看一下[维基百科](https://en.wikipedia.org/wiki/Conway%27s_Game_of_Life)。
 
 ### 1.3 具有繁殖能力的 live-cells pattern
 
@@ -53,7 +53,7 @@ enum State {
 ```
 
 - `Grid` 包含了生命游戏的所有数据，`dim` 定义了模拟区域的两个方向上 `cell` 的数量，而所有 `cell`s 存储在一个 Vetor 中。
-- `GridPos` 用来表示一个 `cell` 在 `Grid` 中的坐标。由于所有 cell 的存储不是以 `Vec<Vec<_>>` 格式的，我们需要为 `Grid` 定义 `GridPos` 与 Vetor index 的转换方法。
+- `GridPos` 用来表示一个 `cell` 在 `Grid` 中的坐标。由于 cell 集合的存储不是以 `Vec<Vec<_>>` 格式的，我们需要为 `Grid` 定义 `GridPos` 与 Vetor index 的转换方法。
 - `State` 用来表示 cell 的状态信息。
 
 ### 2.2 Game Rules
